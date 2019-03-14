@@ -1,6 +1,7 @@
 const fetch = require("node-fetch")
 
 import Tape from "./tape"
+import { CacheMode } from "./cache-mode"
 
 export default class RequestHandler {
   constructor(tapeStore, options) {
@@ -10,8 +11,14 @@ export default class RequestHandler {
 
   async handle(req) {
     const newTape = new Tape(req, this.options)
-    let matchingTape = this.options.cache ? this.tapeStore.find(newTape) : null;
+    const cacheMode = this.options.cacheMode ? this.options.cacheMode(req) : CacheMode.cache;
+    let matchingTape = cacheMode === CacheMode.cache ? this.tapeStore.find(newTape) : null;
     let resObj, responseTape;
+
+    if (cacheMode === CacheMode.passThrough) {
+      resObj = await this.makeRealRequest(req)
+      return resObj
+    }
 
     if (matchingTape) {
       responseTape = matchingTape
